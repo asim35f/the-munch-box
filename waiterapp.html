@@ -222,7 +222,7 @@ input,select,button{font-family:'Inter',sans-serif;}
 
 /* CONFIRM */
 .confirm-overlay{position:fixed;inset:0;background:rgba(13,27,42,0.6);z-index:600;display:flex;align-items:flex-end;justify-content:center;padding:0;}
-.confirm-sheet{background:white;border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;}
+.confirm-sheet{background:white;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px;max-height:80vh;max-height:80dvh;display:flex;flex-direction:column;overflow:hidden;}
 .cs-btns{display:flex;gap:10px;margin-top:16px;}
 .cs-btn{flex:1;padding:13px;border-radius:12px;font-size:0.9rem;font-weight:700;border:none;cursor:pointer;}
 .cs-cancel{background:#F0F4F8;color:#1A2533;}
@@ -847,7 +847,20 @@ window.sendToKitchen=function(){
   if(newItems.length>0)sumHtml+='<div style="margin-bottom:8px;"><div style="font-size:0.68rem;font-weight:700;color:#27AE60;text-transform:uppercase;margin-bottom:4px;">New Items</div>'+newItems.map(i=>'<div style="font-size:0.8rem;padding:2px 0;"><span style="background:#E74C3C;color:white;font-weight:700;padding:1px 7px;border-radius:5px;font-size:0.7rem;">×'+i.qty+'</span> '+esc(i.name)+(i.size?' ('+i.size+')':'')+'</div>').join('')+'</div>';
   if(cancelledItems.length>0)sumHtml+='<div><div style="font-size:0.68rem;font-weight:700;color:#E74C3C;text-transform:uppercase;margin-bottom:4px;">Cancellations</div>'+cancelledItems.map(i=>'<div style="font-size:0.8rem;text-decoration:line-through;color:#E74C3C;padding:2px 0;">'+esc(i.name)+'</div>').join('')+'</div>';
   if(!sumHtml)sumHtml='<div style="font-size:0.82rem;color:#6B7C93;">Send all current items to kitchen.</div>';
-  sheet.innerHTML='<div class="confirm-sheet"><div style="font-size:2rem;text-align:center;margin-bottom:8px;">🍳</div><div style="font-weight:700;font-size:1rem;text-align:center;margin-bottom:10px;">Send to Kitchen?</div><div style="background:#F5F8FC;border-radius:10px;padding:12px;margin-bottom:10px;">'+sumHtml+'</div><div style="font-size:0.78rem;color:#6B7C93;text-align:center;margin-bottom:4px;">'+esc(currentHall.name)+' · '+esc(currentTable)+' · Bill '+esc(currentBill.billToken)+'</div><div class="cs-btns"><button class="cs-btn cs-cancel" onclick="document.getElementById(\'kc-confirm\').remove()">Cancel</button><button class="cs-btn cs-ok" onclick="doKitchen()">✅ Yes, Send</button></div></div>';
+  sheet.innerHTML='<div class="confirm-sheet">'+
+    '<div style="font-size:2rem;text-align:center;margin-bottom:6px;">🍳</div>'+
+    '<div style="font-weight:700;font-size:1rem;text-align:center;margin-bottom:10px;">Send to Kitchen?</div>'+
+    '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;margin-bottom:10px;">'+
+      '<div style="background:#F5F8FC;border-radius:10px;padding:12px;">'+sumHtml+'</div>'+
+    '</div>'+
+    '<div style="font-size:0.78rem;color:#6B7C93;text-align:center;margin-bottom:4px;">'+esc(currentHall.name)+' · '+esc(currentTable)+' · Bill '+esc(currentBill.billToken)+'</div>'+
+    '<div class="cs-btns" style="flex-shrink:0;">'+
+      '<button class="cs-btn cs-cancel" id="kc-cancel-btn">Cancel</button>'+
+      '<button class="cs-btn cs-ok" id="kc-ok-btn">✅ Yes, Send</button>'+
+    '</div>'+
+  '</div>';
+  document.getElementById('kc-cancel-btn').addEventListener('click',()=>sheet.remove());
+  document.getElementById('kc-ok-btn').addEventListener('click',()=>{sheet.remove();doKitchen();});
   document.body.appendChild(sheet);
 };
 
@@ -866,6 +879,7 @@ window.doKitchen=async function(){
 };
 
 function showSuccessOverlay(){
+  closeDrawer();
   const ex=document.getElementById('ks-success');if(ex)ex.remove();
   const ov=document.createElement('div');ov.id='ks-success';
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,60,30,0.96);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;';
@@ -874,9 +888,29 @@ function showSuccessOverlay(){
     '<div style="font-size:1rem;color:rgba(255,255,255,0.7);margin-bottom:4px;">'+esc(currentHall.name)+' · '+esc(currentTable)+'</div>'+
     '<div style="font-size:0.88rem;color:rgba(255,255,255,0.45);font-family:monospace;margin-bottom:28px;">Bill '+esc(currentBill.billToken)+'</div>'+
     '<div style="width:72px;height:72px;border-radius:50%;background:rgba(39,174,96,0.3);border:3px solid #27AE60;display:flex;align-items:center;justify-content:center;font-size:2.2rem;animation:pulse 1s ease infinite;margin-bottom:28px;">🍳</div>'+
-    '<button onclick="this.parentElement.remove()" style="background:#27AE60;color:white;border:none;border-radius:14px;padding:14px 36px;font-size:0.95rem;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">← Back to Menu</button>';
+    '<button id="success-back-btn" style="background:#27AE60;color:white;border:none;border-radius:14px;padding:14px 36px;font-size:0.95rem;font-weight:700;cursor:pointer;font-family:Inter,sans-serif;">Next Table →</button>';
   document.body.appendChild(ov);
-  setTimeout(()=>{const s=document.getElementById('ks-success');if(s)s.remove();},3000);
+  // Attach event using addEventListener (no inline onclick)
+  document.getElementById('success-back-btn')?.addEventListener('click',()=>{
+    ov.remove();
+    // Auto-navigate to table screen for next order
+    goBackToTable();
+  });
+  // Auto close and navigate after 3 seconds
+  setTimeout(()=>{
+    const s=document.getElementById('ks-success');
+    if(s){s.remove();goBackToTable();}
+  },3000);
+}
+
+function goBackToTable(){
+  // Reset current bill state but keep hall selected
+  currentTable=null;currentBill=null;currentBillId=null;orderItems=[];
+  // Reload open bills to reflect the one just sent
+  loadOpenBills().then(()=>{
+    renderTables(currentHall.tables);
+    showScreen('table');
+  });
 }
 
 // ── WHATSAPP ──────────────────────────────────────────

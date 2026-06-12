@@ -177,7 +177,7 @@ input,select,button,textarea{font-family:'Inter',sans-serif;}
 
 /* CONFIRM */
 .confirm-overlay{position:fixed;inset:0;background:rgba(13,27,42,0.7);z-index:600;display:flex;align-items:flex-end;justify-content:center;}
-.confirm-sheet{background:white;border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;}
+.confirm-sheet{background:white;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:480px;max-height:80vh;max-height:80dvh;display:flex;flex-direction:column;overflow:hidden;}
 .cs-btns{display:flex;gap:10px;margin-top:14px;}
 .cs-btn{flex:1;padding:13px;border-radius:12px;font-size:0.9rem;font-weight:700;border:none;cursor:pointer;}
 .cs-cancel{background:#F0F4F8;color:#1A2533;}
@@ -777,10 +777,22 @@ document.getElementById('btn-kitchen')?.addEventListener('click',()=>{
   if(newItems.length>0){sumHtml+='<div style="margin-bottom:8px;"><div style="font-size:0.68rem;font-weight:700;color:#27AE60;text-transform:uppercase;margin-bottom:4px;">New Items</div>';newItems.forEach(i=>{sumHtml+='<div style="font-size:0.82rem;padding:2px 0;">× '+i.qty+' '+esc(i.name)+(i.size?' ('+i.size+')':'')+'</div>';});sumHtml+='</div>';}
   if(cancelledItems.length>0){sumHtml+='<div><div style="font-size:0.68rem;font-weight:700;color:#E74C3C;text-transform:uppercase;margin-bottom:4px;">Cancellations</div>';cancelledItems.forEach(i=>{sumHtml+='<div style="font-size:0.82rem;text-decoration:line-through;color:#E74C3C;">'+esc(i.name)+'</div>';});sumHtml+='</div>';}
   if(!sumHtml)sumHtml='<div style="font-size:0.82rem;color:#6B7C93;">Send all items to kitchen.</div>';
-  sheet.innerHTML='<div class="confirm-sheet"><div style="font-size:2rem;text-align:center;margin-bottom:8px;">🍳</div><div style="font-weight:700;font-size:1rem;text-align:center;margin-bottom:10px;">Send to Kitchen?</div><div style="background:#F5F8FC;border-radius:10px;padding:12px;margin-bottom:10px;">'+sumHtml+'</div><div style="font-size:0.78rem;color:#6B7C93;text-align:center;margin-bottom:4px;">🛵 '+esc(custName)+' · '+esc(currentOrder.billToken)+'</div><div class="cs-btns"><button class="cs-btn cs-cancel" id="cs-cancel-btn">Cancel</button><button class="cs-btn cs-ok" id="cs-ok-btn">✅ Yes, Send</button></div></div>';
+  sheet.innerHTML=
+    '<div class="confirm-sheet">'+
+    '<div style="font-size:2rem;text-align:center;margin-bottom:6px;">🍳</div>'+
+    '<div style="font-weight:700;font-size:1rem;text-align:center;margin-bottom:10px;">Send to Kitchen?</div>'+
+    '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;margin-bottom:10px;">'+
+      '<div style="background:#F5F8FC;border-radius:10px;padding:12px;">'+sumHtml+'</div>'+
+    '</div>'+
+    '<div style="font-size:0.78rem;color:#6B7C93;text-align:center;margin-bottom:8px;">🛵 '+esc(custName)+' · '+esc(currentOrder.billToken)+'</div>'+
+    '<div class="cs-btns" style="flex-shrink:0;">'+
+      '<button class="cs-btn cs-cancel" id="del-cs-cancel">Cancel</button>'+
+      '<button class="cs-btn cs-ok" id="del-cs-ok">✅ Yes, Send</button>'+
+    '</div>'+
+  '</div>';
   document.body.appendChild(sheet);
-  document.getElementById('cs-cancel-btn')?.addEventListener('click',()=>sheet.remove());
-  document.getElementById('cs-ok-btn')?.addEventListener('click',()=>{sheet.remove();doSendKitchen();});
+  document.getElementById('del-cs-cancel')?.addEventListener('click',()=>sheet.remove());
+  document.getElementById('del-cs-ok')?.addEventListener('click',()=>{sheet.remove();doSendKitchen();});
 });
 
 async function doSendKitchen(){
@@ -797,6 +809,7 @@ async function doSendKitchen(){
 }
 
 function showSuccessOverlay(){
+  closeDrawer();
   const ex=document.getElementById('ks-success');if(ex)ex.remove();
   const ov=document.createElement('div');ov.id='ks-success';
   ov.style.cssText='position:fixed;inset:0;background:rgba(15,60,30,0.96);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px;';
@@ -806,12 +819,23 @@ function showSuccessOverlay(){
     '<div style="font-size:0.88rem;color:rgba(255,255,255,0.45);font-family:monospace;margin-bottom:28px;">'+esc(currentOrder.billToken)+'</div>'+
     '<div style="width:72px;height:72px;border-radius:50%;background:rgba(39,174,96,0.3);border:3px solid #27AE60;display:flex;align-items:center;justify-content:center;font-size:2.2rem;animation:pulse 1s ease infinite;margin-bottom:28px;">🍳</div>';
   const closeBtn=document.createElement('button');
-  closeBtn.textContent='← Back to Menu';
+  closeBtn.textContent='New Order →';
   closeBtn.style.cssText='background:#27AE60;color:white;border:none;border-radius:14px;padding:14px 36px;font-size:0.95rem;font-weight:700;cursor:pointer;';
-  closeBtn.addEventListener('click',()=>ov.remove());
+  closeBtn.addEventListener('click',()=>{ov.remove();goToNewDelivery();});
   ov.appendChild(closeBtn);
   document.body.appendChild(ov);
-  setTimeout(()=>{const s=document.getElementById('ks-success');if(s)s.remove();},3000);
+  // Auto navigate after 3 seconds
+  setTimeout(()=>{const s=document.getElementById('ks-success');if(s){s.remove();goToNewDelivery();}},3000);
+}
+
+function goToNewDelivery(){
+  // Reset order state, go back to customer info screen for next delivery
+  currentOrder=null;currentOrderId=null;orderItems=[];
+  custName='';custPhone='';custAddress='';
+  document.getElementById('cust-name').value='';
+  document.getElementById('cust-phone').value='';
+  document.getElementById('cust-address').value='';
+  showScreen('customer');
 }
 
 // ── WHATSAPP ──────────────────────────────────────────
